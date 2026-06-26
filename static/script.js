@@ -5,6 +5,15 @@ let mapInstance = null;
 let mapMarker = null;
 let tileLayerInstance = null;
 
+// Helper to get local date in YYYY-MM-DD format (prevents timezone offset bugs)
+function getLocalDateString() {
+    const localDate = new Date();
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 const ROAD_COORDINATES = {
     'Silk Board Junction': [12.9176, 77.6244],
     'Hosur Road': [12.9118, 77.6291],
@@ -51,11 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
         initPerformanceCharts();
     }
     
-    // 3. Set default date to today
+    // 3. Set default date to today (using local time to prevent UTC offset issues)
     const dateInput = document.getElementById('pred-date');
     if (dateInput) {
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.value = today;
+        dateInput.value = getLocalDateString();
     }
     
     // 4. Hook up Predictor Form
@@ -323,6 +331,7 @@ function runComparison() {
     }
     
     // Form payloads
+    const todayStr = getLocalDateString();
     const payloadA = {
         area: areaA,
         road: roadA,
@@ -331,7 +340,7 @@ function runComparison() {
         volume: parseInt(document.getElementById('sim-volume-a').value),
         incidents: parseInt(document.getElementById('sim-incidents-a').value),
         pedestrians: parseInt(document.getElementById('sim-pedestrians-a').value),
-        date: new Date().toISOString().split('T')[0]
+        date: todayStr
     };
     
     const payloadB = {
@@ -342,7 +351,7 @@ function runComparison() {
         volume: parseInt(document.getElementById('sim-volume-b').value),
         incidents: parseInt(document.getElementById('sim-incidents-b').value),
         pedestrians: parseInt(document.getElementById('sim-pedestrians-b').value),
-        date: new Date().toISOString().split('T')[0]
+        date: todayStr
     };
     
     // Show results loading

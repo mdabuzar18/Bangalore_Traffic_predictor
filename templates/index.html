@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Advanced Bangalore Traffic Congestion Predictor and Data Science Analytics Dashboard using Machine Learning.">
+    <title>Bangalore Traffic Congestion Predictor & Dashboard</title>
+    <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-traffic-light text-warning logo-icon"></i>
+                    <span>NammaTraffic</span>
+                </div>
+                <div class="sub-logo">BLR Traffic ML Engine</div>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" onclick="switchTab('overview', this)">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Insights Overview</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('predictor', this)">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Live Predictor</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('simulator', this)">
+                    <i class="fa-solid fa-code-compare"></i>
+                    <span>What-If Simulator</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('performance', this)">
+                    <i class="fa-solid fa-gears"></i>
+                    <span>Model Performance</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                {% if models_loaded %}
+                <span class="badge bg-success-glow text-success border border-success px-3 py-2 rounded-pill w-100">
+                    <i class="fa-solid fa-circle-check me-2"></i>ML Engine Active
+                </span>
+                {% else %}
+                <span class="badge bg-danger-glow text-danger border border-danger px-3 py-2 rounded-pill w-100">
+                    <i class="fa-solid fa-circle-xmark me-2"></i>Models Not Trained
+                </span>
+                {% endif %}
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Header bar -->
+            <header class="content-header">
+                <div class="header-title">
+                    <h1 id="page-heading">Traffic Insights Overview</h1>
+                    <p class="text-muted" id="page-subheading">Comprehensive exploratory analysis and real-time statistics for metropolitan Bangalore.</p>
+                </div>
+                <div class="header-actions">
+                    <span class="text-muted me-3 d-none d-sm-inline"><i class="fa-regular fa-clock me-2"></i>Live Data Engine</span>
+                    <button class="btn btn-outline-secondary me-2" id="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+                        <i class="fa-solid fa-moon" id="theme-icon"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="reloadModels()">
+                        <i class="fa-solid fa-arrows-rotate me-2"></i>Reload Models
+                    </button>
+                </div>
+            </header>
+
+            <!-- TAB 1: Insights Overview -->
+            <section id="tab-overview" class="tab-panel active-panel">
+                <!-- KPI Row -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon-container bg-primary-glow text-primary">
+                                <i class="fa-solid fa-hashtag"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Monitored Records</span>
+                                <h3 class="kpi-val" id="kpi-records">{{ summary.kpis.total_records if summary else '8,936' }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon-container bg-danger-glow text-danger">
+                                <i class="fa-solid fa-gauge-high"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Avg Congestion Level</span>
+                                <h3 class="kpi-val" id="kpi-congestion">{{ (summary.kpis.avg_congestion | round(1)) if summary else '80.8' }}%</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon-container bg-success-glow text-success">
+                                <i class="fa-solid fa-gauge"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Avg City Speed</span>
+                                <h3 class="kpi-val" id="kpi-speed">{{ (summary.kpis.avg_speed | round(1)) if summary else '39.4' }} km/h</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon-container bg-warning-glow text-warning">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Total Traffic Incidents</span>
+                                <h3 class="kpi-val" id="kpi-incidents">{{ summary.kpis.total_incidents if summary else '14,032' }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="glass-card h-100">
+                            <div class="card-header-custom">
+                                <h5>Average Speed by Area</h5>
+                                <span class="text-muted text-sm">Velocity differences across metropolitan zones</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <div class="chart-container">
+                                    <canvas id="speedAreaChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="glass-card h-100">
+                            <div class="card-header-custom">
+                                <h5>Weather vs Congestion</h5>
+                                <span class="text-muted text-sm">How climate conditions restrict traffic flow</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <div class="chart-container">
+                                    <canvas id="weatherCongestionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="glass-card">
+                            <div class="card-header-custom">
+                                <h5>Weekly Congestion Profiles</h5>
+                                <span class="text-muted text-sm">Mean congestion by day of the week</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <div class="chart-container">
+                                    <canvas id="dayCongestionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="glass-card">
+                            <div class="card-header-custom">
+                                <h5>Traffic Volume vs Congestion Level</h5>
+                                <span class="text-muted text-sm">Scaling relationship between density and flow delay</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <div class="chart-container">
+                                    <canvas id="volumeCongestionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: Live Predictor -->
+            <section id="tab-predictor" class="tab-panel">
+                <div class="row g-4">
+                    <!-- Form Column -->
+                    <div class="col-lg-6">
+                        <div class="glass-card">
+                            <div class="card-header-custom">
+                                <h5>Scenario Parameters</h5>
+                                <span class="text-muted text-sm">Adjust environmental and vehicle details</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <form id="predictor-form">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="pred-date" class="form-label">Simulation Date</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-dark-inputborder border-end-0"><i class="fa-regular fa-calendar text-muted"></i></span>
+                                                <input type="date" class="form-control" id="pred-date" value="2026-06-26" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="pred-area" class="form-label">Area Zone</label>
+                                            <select class="form-select" id="pred-area" onchange="updateRoadDropdown(this.value, 'pred-road')" required>
+                                                <option value="" disabled selected>Select Area</option>
+                                                {% if summary %}
+                                                    {% for area in summary.metadata.areas %}
+                                                        <option value="{{ area }}">{{ area }}</option>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <option value="Indiranagar">Indiranagar</option>
+                                                {% endif %}
+                                            </select>
+                                        </div>
+                                         <div class="col-md-12">
+                                             <label for="pred-road" class="form-label">Road / Intersection</label>
+                                             <select class="form-select" id="pred-road" required>
+                                                 <option value="" disabled selected>First select an Area Zone</option>
+                                             </select>
+                                         </div>
+                                         <div class="col-md-12 mb-2">
+                                             <label class="form-label mb-2">Simulation Presets (Quick Events)</label>
+                                             <div class="d-flex flex-wrap gap-2">
+                                                 <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2 text-xs" onclick="applyPreset('normal')">Clear / Normal</button>
+                                                 <button type="button" class="btn btn-sm btn-outline-warning py-1 px-2 text-xs" onclick="applyPreset('waterlogging')"><i class="fa-solid fa-cloud-showers-heavy me-1"></i>Waterlogging</button>
+                                                 <button type="button" class="btn btn-sm btn-outline-info py-1 px-2 text-xs" onclick="applyPreset('metro')"><i class="fa-solid fa-train me-1"></i>Metro Block</button>
+                                                 <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 text-xs" onclick="applyPreset('protest')"><i class="fa-solid fa-people-group me-1"></i>VIP Protest</button>
+                                             </div>
+                                         </div>
+                                        <div class="col-md-6">
+                                            <label for="pred-weather" class="form-label">Weather Conditions</label>
+                                            <select class="form-select" id="pred-weather" required>
+                                                {% if summary %}
+                                                    {% for weather in summary.metadata.weather_conditions %}
+                                                        <option value="{{ weather }}" {% if weather == 'Clear' %}selected{% endif %}>{{ weather }}</option>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <option value="Clear">Clear</option>
+                                                    <option value="Rain">Rain</option>
+                                                {% endif %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label d-block">Roadwork or Construction</label>
+                                            <div class="form-check form-switch pt-2">
+                                                <input class="form-check-input switch-large" type="checkbox" role="switch" id="pred-roadwork">
+                                                <label class="form-check-label text-muted ms-2" for="pred-roadwork" id="pred-roadwork-label">No Active Roadworks</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Sliders -->
+                                        <div class="col-12 mt-4">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <label for="pred-volume" class="form-label mb-0">Expected Traffic Volume (Vehicles/hr)</label>
+                                                <span class="badge bg-primary-glow text-primary border border-primary px-2" id="val-volume">25,000</span>
+                                            </div>
+                                            <input type="range" class="form-range" min="4000" max="75000" step="500" id="pred-volume" value="25000" oninput="document.getElementById('val-volume').innerText = parseInt(this.value).toLocaleString()">
+                                        </div>
+
+                                        <div class="col-md-6 mt-4">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <label for="pred-incidents" class="form-label mb-0">Incident Reports</label>
+                                                <span class="badge bg-warning-glow text-warning border border-warning px-2" id="val-incidents">0</span>
+                                            </div>
+                                            <input type="range" class="form-range" min="0" max="10" step="1" id="pred-incidents" value="0" oninput="document.getElementById('val-incidents').innerText = this.value">
+                                        </div>
+
+                                        <div class="col-md-6 mt-4">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <label for="pred-pedestrians" class="form-label mb-0">Pedestrian / Cyclist Count</label>
+                                                <span class="badge bg-success-glow text-success border border-success px-2" id="val-pedestrians">100</span>
+                                            </div>
+                                            <input type="range" class="form-range" min="50" max="250" step="5" id="pred-pedestrians" value="100" oninput="document.getElementById('val-pedestrians').innerText = this.value">
+                                        </div>
+
+                                        <div class="col-12 mt-4 pt-2">
+                                            <button type="submit" class="btn btn-warning w-100 py-3 rounded-3" id="btn-predict">
+                                                <i class="fa-solid fa-wand-magic-sparkles me-2"></i>Evaluate Congestion Risk
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Predictions Column -->
+                    <div class="col-lg-6">
+                        <div class="glass-card h-100 d-flex flex-column">
+                            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5>Congestion Evaluation</h5>
+                                    <span class="text-muted text-sm">Estimated Traffic flow indices</span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-export-report" onclick="exportPDFReport()" title="Export PDF Report">
+                                    <i class="fa-solid fa-file-pdf text-danger me-1"></i>Export
+                                </button>
+                            </div>
+                            <div class="card-body-custom d-flex flex-column justify-content-between flex-grow-1">
+                                <!-- Initial state or loading -->
+                                <div id="predict-placeholder" class="text-center py-5 my-auto">
+                                    <div class="prediction-idle-icon text-muted mb-4">
+                                        <i class="fa-solid fa-wave-square fa-3x animate-pulse"></i>
+                                    </div>
+                                    <h5>Awaiting Parameters</h5>
+                                    <p class="text-muted max-w-sm mx-auto">Fill in the spatial and environmental variables, then click 'Evaluate Congestion Risk' to execute the ML model pipeline.</p>
+                                </div>
+
+                                <!-- Result state -->
+                                <div id="predict-results" class="d-none">
+                                    <div class="row g-4 align-items-center mb-4">
+                                        <div class="col-md-6 text-center">
+                                            <!-- Congestion Radial Gauge -->
+                                            <div class="radial-gauge-container">
+                                                <svg class="radial-gauge" viewBox="0 0 120 120">
+                                                    <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
+                                                    <circle class="gauge-fill" id="gauge-congestion-fill" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="314.16"></circle>
+                                                </svg>
+                                                <div class="gauge-overlay">
+                                                    <span class="gauge-val" id="res-congestion">0%</span>
+                                                    <span class="gauge-lbl text-xs">Congestion</span>
+                                                </div>
+                                            </div>
+                                            <h4 class="mt-3 font-semibold" id="res-congestion-status">Low Traffic</h4>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <!-- Speed Card -->
+                                            <div class="metric-block bg-speed mb-3">
+                                                <div class="metric-icon-glow text-success">
+                                                    <i class="fa-solid fa-gauge-high"></i>
+                                                </div>
+                                                <div class="metric-details">
+                                                    <span class="metric-lbl">Predicted Average Speed</span>
+                                                    <h3 class="metric-num"><span id="res-speed">--</span> <span class="unit-text">km/h</span></h3>
+                                                </div>
+                                            </div>
+                                            <!-- Travel Time Index -->
+                                            <div class="metric-block bg-tti">
+                                                <div class="metric-icon-glow text-info">
+                                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                                </div>
+                                                <div class="metric-details">
+                                                    <span class="metric-lbl">Travel Time Index (TTI)</span>
+                                                    <h3 class="metric-num"><span id="res-tti">--</span>x</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr class="border-dark-border mb-4">
+
+                                    <!-- Capacity Utilization -->
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted font-medium">Road Capacity Utilization</span>
+                                            <span class="font-bold text-warning" id="res-utilization">0%</span>
+                                        </div>
+                                        <div class="progress progress-custom" style="height: 12px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" id="res-utilization-bar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Advisory Panel -->
+                                    <div class="advisory-card bg-advisory-glow border border-advisory mb-4" id="res-advisory">
+                                        <div class="advisory-icon" id="res-advisory-icon">
+                                            <i class="fa-solid fa-circle-check"></i>
+                                        </div>
+                                        <div class="advisory-text">
+                                            <h6 id="res-advisory-title">Optimal Commute Conditions</h6>
+                                            <p class="text-sm text-muted mb-0" id="res-advisory-desc">Road capacity is highly available, with speeds close to free flow. Travel times are optimal.</p>
+                                        </div>
+                                    </div>
+
+                                     <!-- Spatial Location Map -->
+                                     <div class="glass-card mt-3 border border-dark-border" id="map-card" style="height: 230px;">
+                                         <div id="map-container" style="width: 100%; height: 100%; border-radius: 12px; overflow: hidden;"></div>
+                                     </div>
+
+                                     <!-- Hourly Congestion Profile Chart -->
+                                     <div class="glass-card mt-3 border border-dark-border d-none" id="hourly-profile-card">
+                                         <div class="card-header-custom d-flex justify-content-between align-items-center py-2 px-3">
+                                             <span class="font-bold text-sm">Hourly Congestion Profile</span>
+                                             <span class="badge bg-success-glow text-success border border-success px-2 py-1 text-xs" id="best-travel-window" style="font-size: 0.72rem;">Best Time: --</span>
+                                         </div>
+                                         <div class="card-body-custom p-2" style="height: 140px; position: relative;">
+                                             <canvas id="hourlyCongestionChart"></canvas>
+                                         </div>
+                                     </div>
+                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: What-If Simulator -->
+            <section id="tab-simulator" class="tab-panel">
+                <!-- Top Description -->
+                <div class="glass-card mb-4">
+                    <div class="card-body-custom d-flex align-items-center">
+                        <div class="p-3 bg-warning-glow rounded-3 text-warning me-4">
+                            <i class="fa-solid fa-code-compare fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Traffic Impact Scenario Simulator</h5>
+                            <p class="text-muted text-sm mb-0">Simulate and compare two different environmental scenarios side-by-side. Watch how changes in variables (like heavy rainfall or a vehicular incident) shift predictions dynamically.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dual Columns for Scenarios -->
+                <div class="row g-4">
+                    <!-- Scenario A -->
+                    <div class="col-lg-6">
+                        <div class="glass-card border-top border-primary border-3">
+                            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5>Scenario A (Baseline)</h5>
+                                    <span class="text-muted text-sm">Baseline test parameters</span>
+                                </div>
+                                <span class="badge bg-primary-glow text-primary">Scenario A</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <form id="sim-form-a">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Area Zone</label>
+                                            <select class="form-select select-sim-area" id="sim-area-a" onchange="updateRoadDropdown(this.value, 'sim-road-a')" required>
+                                                <option value="" disabled selected>Select Area</option>
+                                                {% if summary %}
+                                                    {% for area in summary.metadata.areas %}
+                                                        <option value="{{ area }}">{{ area }}</option>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Road</label>
+                                            <select class="form-select" id="sim-road-a" required>
+                                                <option value="" disabled selected>Select Area First</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Weather</label>
+                                            <select class="form-select" id="sim-weather-a">
+                                                {% if summary %}
+                                                    {% for weather in summary.metadata.weather_conditions %}
+                                                        <option value="{{ weather }}" {% if weather == 'Clear' %}selected{% endif %}>{{ weather }}</option>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Roadworks</label>
+                                            <select class="form-select" id="sim-roadwork-a">
+                                                <option value="No">No Active Roadworks</option>
+                                                <option value="Yes">Active Construction</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-12">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <label class="form-label mb-0 text-sm">Traffic Volume</label>
+                                                <span class="badge bg-dark-badge" id="val-volume-a">25,000</span>
+                                            </div>
+                                            <input type="range" class="form-range" min="4000" max="75000" step="1000" id="sim-volume-a" value="25000" oninput="document.getElementById('val-volume-a').innerText = parseInt(this.value).toLocaleString()">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label text-sm">Incidents</label>
+                                            <input type="number" class="form-control" min="0" max="10" id="sim-incidents-a" value="0">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label text-sm">Pedestrian Count</label>
+                                            <input type="number" class="form-control" min="50" max="250" id="sim-pedestrians-a" value="100">
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scenario B -->
+                    <div class="col-lg-6">
+                        <div class="glass-card border-top border-info border-3">
+                            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5>Scenario B (Disrupted / Alternate)</h5>
+                                    <span class="text-muted text-sm">Alternate parameters to compare</span>
+                                </div>
+                                <span class="badge bg-info-glow text-info">Scenario B</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <form id="sim-form-b">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Area Zone</label>
+                                            <select class="form-select select-sim-area" id="sim-area-b" onchange="updateRoadDropdown(this.value, 'sim-road-b')" required>
+                                                <option value="" disabled selected>Select Area</option>
+                                                {% if summary %}
+                                                    {% for area in summary.metadata.areas %}
+                                                        <option value="{{ area }}">{{ area }}</option>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Road</label>
+                                            <select class="form-select" id="sim-road-b" required>
+                                                <option value="" disabled selected>Select Area First</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Weather</label>
+                                            <select class="form-select" id="sim-weather-b">
+                                                {% if summary %}
+                                                    {% for weather in summary.metadata.weather_conditions %}
+                                                        <option value="{{ weather }}" {% if weather == 'Rain' %}selected{% endif %}>{{ weather }}</option>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Roadworks</label>
+                                            <select class="form-select" id="sim-roadwork-b">
+                                                <option value="No">No Active Roadworks</option>
+                                                <option value="Yes" selected>Active Construction</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-12">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <label class="form-label mb-0 text-sm">Traffic Volume</label>
+                                                <span class="badge bg-dark-badge" id="val-volume-b">35,000</span>
+                                            </div>
+                                            <input type="range" class="form-range" min="4000" max="75000" step="1000" id="sim-volume-b" value="35000" oninput="document.getElementById('val-volume-b').innerText = parseInt(this.value).toLocaleString()">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label text-sm">Incidents</label>
+                                            <input type="number" class="form-control" min="0" max="10" id="sim-incidents-b" value="1">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label text-sm">Pedestrian Count</label>
+                                            <input type="number" class="form-control" min="50" max="250" id="sim-pedestrians-b" value="150">
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Trigger Button -->
+                <div class="text-center my-4">
+                    <button class="btn btn-warning py-3 px-5 rounded-pill font-bold" onclick="runComparison()">
+                        <i class="fa-solid fa-play me-2"></i>Simulate Comparative Scenarios
+                    </button>
+                </div>
+
+                <!-- Comparison Results -->
+                <div class="row g-4 d-none" id="sim-results-container">
+                    <div class="col-12">
+                        <div class="glass-card">
+                            <div class="card-header-custom text-center">
+                                <h5>Comparison Output Analysis</h5>
+                                <span class="text-muted text-sm">Delta analysis of Scenario B relative to Scenario A</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <div class="row g-4">
+                                    <!-- Congestion comparison -->
+                                    <div class="col-md-3 text-center border-end border-dark-border">
+                                        <h6 class="text-muted">Congestion level</h6>
+                                        <div class="d-flex justify-content-center align-items-baseline my-3">
+                                            <h4 class="mb-0 text-primary" id="sim-res-cong-a">0%</h4>
+                                            <span class="mx-2 text-muted">vs</span>
+                                            <h4 class="mb-0 text-info" id="sim-res-cong-b">0%</h4>
+                                        </div>
+                                        <div class="badge px-3 py-2 rounded-pill font-medium" id="sim-delta-cong">--</div>
+                                    </div>
+                                    <!-- Speed comparison -->
+                                    <div class="col-md-3 text-center border-end border-dark-border">
+                                        <h6 class="text-muted">Average Speed</h6>
+                                        <div class="d-flex justify-content-center align-items-baseline my-3">
+                                            <h4 class="mb-0 text-primary"><span id="sim-res-speed-a">0</span> <span class="text-xs">km/h</span></h4>
+                                            <span class="mx-2 text-muted">vs</span>
+                                            <h4 class="mb-0 text-info"><span id="sim-res-speed-b">0</span> <span class="text-xs">km/h</span></h4>
+                                        </div>
+                                        <div class="badge px-3 py-2 rounded-pill font-medium" id="sim-delta-speed">--</div>
+                                    </div>
+                                    <!-- Travel Time Index comparison -->
+                                    <div class="col-md-3 text-center border-end border-dark-border">
+                                        <h6 class="text-muted">Travel Time Index (TTI)</h6>
+                                        <div class="d-flex justify-content-center align-items-baseline my-3">
+                                            <h4 class="mb-0 text-primary" id="sim-res-tti-a">1.0x</h4>
+                                            <span class="mx-2 text-muted">vs</span>
+                                            <h4 class="mb-0 text-info" id="sim-res-tti-b">1.0x</h4>
+                                        </div>
+                                        <div class="badge px-3 py-2 rounded-pill font-medium" id="sim-delta-tti">--</div>
+                                    </div>
+                                    <!-- Capacity Utilization comparison -->
+                                    <div class="col-md-3 text-center">
+                                        <h6 class="text-muted">Capacity Utilization</h6>
+                                        <div class="d-flex justify-content-center align-items-baseline my-3">
+                                            <h4 class="mb-0 text-primary" id="sim-res-util-a">0%</h4>
+                                            <span class="mx-2 text-muted">vs</span>
+                                            <h4 class="mb-0 text-info" id="sim-res-util-b">0%</h4>
+                                        </div>
+                                        <div class="badge px-3 py-2 rounded-pill font-medium" id="sim-delta-util">--</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: Model Performance -->
+            <section id="tab-performance" class="tab-panel">
+                <!-- Accuracy Metrics -->
+                <div class="row g-4 mb-4">
+                    <div class="col-12">
+                        <div class="glass-card">
+                            <div class="card-header-custom">
+                                <h5>Regression Model Quality Metrics</h5>
+                                <span class="text-muted text-sm">Testing metrics computed on 20% validation split (1,788 rows)</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <div class="row g-4">
+                                    {% for target in ['Congestion Level', 'Average Speed', 'Travel Time Index', 'Road Capacity Utilization'] %}
+                                    <div class="col-md-3">
+                                        <div class="metrics-block bg-dark-card border border-dark-border p-3 rounded-3 text-center">
+                                            <h6 class="font-bold text-truncate">{{ target }}</h6>
+                                            <hr class="border-dark-border my-2">
+                                            <div class="mb-3 mt-2">
+                                                <span class="text-muted text-sm d-block">Coefficient of Determination</span>
+                                                <h4 class="font-semibold text-warning mb-0">{{ metrics[target]['R2'] if metrics else '0.00' }} <span class="unit-text text-sm">R²</span></h4>
+                                            </div>
+                                            <div class="row g-2 text-xs">
+                                                <div class="col-6 border-end border-dark-border">
+                                                    <span class="text-muted d-block">MAE</span>
+                                                    <span class="font-bold text-white">{{ metrics[target]['MAE'] if metrics else '0.0' }}</span>
+                                                </div>
+                                                <div class="col-6">
+                                                    <span class="text-muted d-block">RMSE</span>
+                                                    <span class="font-bold text-white">{{ metrics[target]['RMSE'] if metrics else '0.0' }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature Importances Chart -->
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="glass-card">
+                            <div class="card-header-custom">
+                                <h5>Congestion Driver Importance</h5>
+                                <span class="text-muted text-sm">Feature weights driving Congestion Level predictions</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <div class="chart-container">
+                                    <canvas id="importanceCongestionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="glass-card">
+                            <div class="card-header-custom">
+                                <h5>Average Speed Driver Importance</h5>
+                                <span class="text-muted text-sm">Feature weights driving Average Speed predictions</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <div class="chart-container">
+                                    <canvas id="importanceSpeedChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Script dependencies -->
+    <!-- ChartJS via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet JS via CDN -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Injection of Server-Side aggregated stats directly to Frontend JS -->
+    <script>
+        // Inject variables from Flask context securely as JS objects
+        const dataSummary = {{ summary | tojson | safe if summary else 'null' }};
+        const modelMetrics = {{ metrics | tojson | safe if metrics else 'null' }};
+        const featureImportances = {{ feature_importances | tojson | safe if feature_importances else 'null' }};
+    </script>
+    <!-- Custom Script File -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

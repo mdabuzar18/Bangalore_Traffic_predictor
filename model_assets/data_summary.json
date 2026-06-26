@@ -1,0 +1,113 @@
+{
+    "metadata": {
+        "area_road_map": {
+            "Indiranagar": [
+                "100 Feet Road",
+                "CMH Road"
+            ],
+            "Whitefield": [
+                "ITPL Main Road",
+                "Marathahalli Bridge"
+            ],
+            "Koramangala": [
+                "Sarjapur Road",
+                "Sony World Junction"
+            ],
+            "M.G. Road": [
+                "Anil Kumble Circle",
+                "Trinity Circle"
+            ],
+            "Jayanagar": [
+                "Jayanagar 4th Block",
+                "South End Circle"
+            ],
+            "Hebbal": [
+                "Ballari Road",
+                "Hebbal Flyover"
+            ],
+            "Yeshwanthpur": [
+                "Tumkur Road",
+                "Yeshwanthpur Circle"
+            ],
+            "Electronic City": [
+                "Hosur Road",
+                "Silk Board Junction"
+            ]
+        },
+        "weather_conditions": [
+            "Clear",
+            "Fog",
+            "Overcast",
+            "Rain",
+            "Windy"
+        ],
+        "areas": [
+            "Electronic City",
+            "Hebbal",
+            "Indiranagar",
+            "Jayanagar",
+            "Koramangala",
+            "M.G. Road",
+            "Whitefield",
+            "Yeshwanthpur"
+        ]
+    },
+    "kpis": {
+        "total_records": 8936,
+        "avg_congestion": 80.82,
+        "avg_speed": 39.45,
+        "total_incidents": 14033
+    },
+    "charts": {
+        "congestion_by_weather": {
+            "Clear": 80.72,
+            "Fog": 81.61,
+            "Overcast": 80.3,
+            "Rain": 80.54,
+            "Windy": 82.37
+        },
+        "speed_by_weather": {
+            "Clear": 39.47,
+            "Fog": 39.47,
+            "Overcast": 39.43,
+            "Rain": 39.28,
+            "Windy": 39.52
+        },
+        "speed_by_area": {
+            "Electronic City": 43.66,
+            "Hebbal": 40.15,
+            "Indiranagar": 38.64,
+            "Jayanagar": 39.79,
+            "Koramangala": 36.06,
+            "M.G. Road": 37.54,
+            "Whitefield": 42.14,
+            "Yeshwanthpur": 43.45
+        },
+        "congestion_by_day": {
+            "Monday": 81.42,
+            "Tuesday": 80.33,
+            "Wednesday": 81.28,
+            "Thursday": 81.15,
+            "Friday": 80.27,
+            "Saturday": 80.28,
+            "Sunday": 81.02
+        },
+        "roadwork_impact": {
+            "Congestion Level": {
+                "No": 80.82,
+                "Yes": 80.78
+            },
+            "Average Speed": {
+                "No": 39.5,
+                "Yes": 38.97
+            }
+        },
+        "congestion_by_volume": {
+            "4165-17794": 42.59,
+            "17794-31355": 82.12,
+            "31355-44916": 99.97,
+            "44916-58477": 100.0,
+            "58477-72039": 100.0
+        }
+    }
+}

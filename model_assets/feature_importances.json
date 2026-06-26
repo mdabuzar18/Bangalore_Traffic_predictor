@@ -1,0 +1,46 @@
+{
+    "Congestion Level": {
+        "Area Name": 0.22,
+        "Road/Intersection Name": 0.37,
+        "Weather Conditions": 0.21,
+        "Roadwork and Construction Activity": 0.05,
+        "Traffic Volume": 97.68,
+        "Incident Reports": 0.31,
+        "Pedestrian and Cyclist Count": 0.6,
+        "Day of Week": 0.24,
+        "Month": 0.32
+    },
+    "Average Speed": {
+        "Area Name": 3.39,
+        "Road/Intersection Name": 7.6,
+        "Weather Conditions": 4.91,
+        "Roadwork and Construction Activity": 1.01,
+        "Traffic Volume": 52.55,
+        "Incident Reports": 4.81,
+        "Pedestrian and Cyclist Count": 12.56,
+        "Day of Week": 5.9,
+        "Month": 7.27
+    },
+    "Travel Time Index": {
+        "Area Name": 0.65,
+        "Road/Intersection Name": 1.22,
+        "Weather Conditions": 0.72,
+        "Roadwork and Construction Activity": 0.18,
+        "Traffic Volume": 92.18,
+        "Incident Reports": 0.67,
+        "Pedestrian and Cyclist Count": 2.14,
+        "Day of Week": 1.0,
+        "Month": 1.22
+    },
+    "Road Capacity Utilization": {
+        "Area Name": 0.05,
+        "Road/Intersection Name": 0.09,
+        "Weather Conditions": 0.06,
+        "Roadwork and Construction Activity": 0.01,
+        "Traffic Volume": 99.46,
+        "Incident Reports": 0.03,
+        "Pedestrian and Cyclist Count": 0.12,
+        "Day of Week": 0.07,
+        "Month": 0.1
+    }
+}

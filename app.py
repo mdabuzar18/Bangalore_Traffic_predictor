@@ -61,7 +61,6 @@ load_assets()
 
 @app.route('/')
 def home():
-    # If the assets are not loaded yet, try loading again
     if pipelines is None:
         load_assets()
         
@@ -87,6 +86,11 @@ def predict():
         # Parse JSON request data
         data = request.json
         
+        # Get desired model architecture
+        model_name = data.get('model', 'Random Forest')
+        if model_name not in pipelines:
+            model_name = 'Random Forest'
+            
         # Extract features
         area = data.get('area')
         road = data.get('road')
@@ -115,9 +119,11 @@ def predict():
             'Month': month
         }])
         
-        # Get predictions for all targets
+        # Get predictions for all targets from selected model architecture
         predictions = {}
-        for target, pipeline in pipelines.items():
+        model_pipelines = pipelines[model_name]
+        
+        for target, pipeline in model_pipelines.items():
             pred = pipeline.predict(input_data)[0]
             
             # Apply logical bounds based on variable domain
@@ -145,7 +151,6 @@ def predict():
 
 @app.route('/api/reload', methods=['POST'])
 def reload_models():
-    # Reload model assets (in case model was retrained while server was running)
     load_assets()
     return jsonify({
         "success": True,
@@ -154,5 +159,4 @@ def reload_models():
     })
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='127.0.0.1', port=5001, debug=True)

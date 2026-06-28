@@ -1,22 +1,68 @@
 {
-    "Congestion Level": {
-        "MAE": 2.8939,
-        "RMSE": 4.4261,
-        "R2": 0.9638
+    "Random Forest": {
+        "Congestion Level": {
+            "MAE": 2.8711,
+            "RMSE": 4.3861,
+            "R2": 0.9644
+        },
+        "Average Speed": {
+            "MAE": 7.7275,
+            "RMSE": 9.6771,
+            "R2": 0.1621
+        },
+        "Travel Time Index": {
+            "MAE": 0.0404,
+            "RMSE": 0.0738,
+            "R2": 0.7971
+        },
+        "Road Capacity Utilization": {
+            "MAE": 0.6217,
+            "RMSE": 1.4486,
+            "R2": 0.9921
+        }
     },
-    "Average Speed": {
-        "MAE": 7.7382,
-        "RMSE": 9.6983,
-        "R2": 0.1584
+    "Decision Tree": {
+        "Congestion Level": {
+            "MAE": 3.1486,
+            "RMSE": 5.0656,
+            "R2": 0.9526
+        },
+        "Average Speed": {
+            "MAE": 8.0889,
+            "RMSE": 10.224,
+            "R2": 0.0647
+        },
+        "Travel Time Index": {
+            "MAE": 0.0419,
+            "RMSE": 0.0777,
+            "R2": 0.7753
+        },
+        "Road Capacity Utilization": {
+            "MAE": 0.7295,
+            "RMSE": 1.7545,
+            "R2": 0.9885
+        }
     },
-    "Travel Time Index": {
-        "MAE": 0.0406,
-        "RMSE": 0.0741,
-        "R2": 0.7955
-    },
-    "Road Capacity Utilization": {
-        "MAE": 0.6193,
-        "RMSE": 1.444,
-        "R2": 0.9922
+    "Linear Regression": {
+        "Congestion Level": {
+            "MAE": 7.8156,
+            "RMSE": 9.6541,
+            "R2": 0.8277
+        },
+        "Average Speed": {
+            "MAE": 7.9564,
+            "RMSE": 9.9134,
+            "R2": 0.1207
+        },
+        "Travel Time Index": {
+            "MAE": 0.0943,
+            "RMSE": 0.1161,
+            "R2": 0.4979
+        },
+        "Road Capacity Utilization": {
+            "MAE": 5.3105,
+            "RMSE": 7.0902,
+            "R2": 0.8119
+        }
     }
 }

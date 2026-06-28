@@ -199,6 +199,14 @@
                             <div class="card-body-custom">
                                 <form id="predictor-form">
                                     <div class="row g-3">
+                                         <div class="col-md-12">
+                                             <label for="pred-model" class="form-label">Model Architecture</label>
+                                             <select class="form-select text-warning font-semibold bg-dark-card" id="pred-model" required>
+                                                 <option value="Random Forest" selected>Random Forest (Ensemble Regressor - Best Accuracy)</option>
+                                                 <option value="Decision Tree">Decision Tree (Single Estimator)</option>
+                                                 <option value="Linear Regression">Linear Regression (Parametric Baseline)</option>
+                                             </select>
+                                         </div>
                                         <div class="col-md-6">
                                             <label for="pred-date" class="form-label">Simulation Date</label>
                                             <div class="input-group">
@@ -378,21 +386,100 @@
                                         </div>
                                     </div>
 
-                                     <!-- Spatial Location Map -->
-                                     <div class="glass-card mt-3 border border-dark-border" id="map-card" style="height: 230px;">
-                                         <div id="map-container" style="width: 100%; height: 100%; border-radius: 12px; overflow: hidden;"></div>
-                                     </div>
+                                      <!-- Spatial Location Map -->
+                                      <div class="glass-card mt-3 border border-dark-border" id="map-card" style="height: 230px;">
+                                          <div id="map-container" style="width: 100%; height: 100%; border-radius: 12px; overflow: hidden;"></div>
+                                      </div>
 
-                                     <!-- Hourly Congestion Profile Chart -->
-                                     <div class="glass-card mt-3 border border-dark-border d-none" id="hourly-profile-card">
-                                         <div class="card-header-custom d-flex justify-content-between align-items-center py-2 px-3">
-                                             <span class="font-bold text-sm">Hourly Congestion Profile</span>
-                                             <span class="badge bg-success-glow text-success border border-success px-2 py-1 text-xs" id="best-travel-window" style="font-size: 0.72rem;">Best Time: --</span>
-                                         </div>
-                                         <div class="card-body-custom p-2" style="height: 140px; position: relative;">
-                                             <canvas id="hourlyCongestionChart"></canvas>
-                                         </div>
-                                     </div>
+                                      <!-- Route Congestion Finder -->
+                                      <div class="glass-card mt-3 border border-dark-border" id="route-finder-card">
+                                          <div class="card-header-custom py-2 px-3">
+                                              <span class="font-bold text-sm">Route Congestion Finder & Optimizer</span>
+                                          </div>
+                                          <div class="card-body-custom p-3">
+                                              <div class="row g-2 mb-3">
+                                                  <div class="col-6">
+                                                      <label for="route-origin" class="form-label text-xs mb-1">Route Origin</label>
+                                                      <select class="form-select form-select-sm bg-dark-card text-white border-dark-border" id="route-origin">
+                                                          <option value="" disabled selected>Select Origin</option>
+                                                      </select>
+                                                  </div>
+                                                  <div class="col-6">
+                                                      <label for="route-destination" class="form-label text-xs mb-1">Route Destination</label>
+                                                      <select class="form-select form-select-sm bg-dark-card text-white border-dark-border" id="route-destination">
+                                                          <option value="" disabled selected>Select Destination</option>
+                                                      </select>
+                                                  </div>
+                                                  <div class="col-12 mt-2">
+                                                      <button type="button" class="btn btn-sm btn-warning w-100 py-2" id="btn-draw-route" onclick="calculateRouteCongestion()">
+                                                          <i class="fa-solid fa-route me-1"></i>Draw Congestion Route Overlay
+                                                      </button>
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      </div>
+
+                                      <!-- Hourly Congestion Profile Chart -->
+                                      <div class="glass-card mt-3 border border-dark-border d-none" id="hourly-profile-card">
+                                          <div class="card-header-custom d-flex justify-content-between align-items-center py-2 px-3">
+                                              <span class="font-bold text-sm">Hourly Congestion Profile</span>
+                                              <span class="badge bg-success-glow text-success border border-success px-2 py-1 text-xs" id="best-travel-window" style="font-size: 0.72rem;">Best Time: --</span>
+                                          </div>
+                                          <div class="card-body-custom p-2" style="height: 140px; position: relative;">
+                                              <canvas id="hourlyCongestionChart"></canvas>
+                                          </div>
+                                      </div>
+
+                                      <!-- Commute & Fuel Waste Calculator -->
+                                      <div class="glass-card mt-3 border border-dark-border" id="calculator-card">
+                                          <div class="card-header-custom py-2 px-3">
+                                              <span class="font-bold text-sm">Commute & Fuel Waste Calculator</span>
+                                          </div>
+                                          <div class="card-body-custom p-3">
+                                              <div class="row g-2 mb-3">
+                                                  <div class="col-md-5">
+                                                      <label for="calc-duration" class="form-label text-xs mb-1">Typical Commute (mins)</label>
+                                                      <input type="number" class="form-control form-control-sm bg-dark-card text-white border-dark-border" id="calc-duration" value="30" min="5" max="180">
+                                                  </div>
+                                                  <div class="col-md-7">
+                                                      <label for="calc-vehicle" class="form-label text-xs mb-1">Vehicle & Fuel Type</label>
+                                                      <select class="form-select form-select-sm bg-dark-card text-white border-dark-border" id="calc-vehicle">
+                                                          <option value="car_petrol" selected>Petrol Car (1.0 L/hr idle)</option>
+                                                          <option value="car_diesel">Diesel Car (0.8 L/hr idle)</option>
+                                                          <option value="bike_petrol">Motorbike (0.3 L/hr idle)</option>
+                                                      </select>
+                                                  </div>
+                                              </div>
+                                              
+                                              <!-- Calculator Output Metrics -->
+                                              <div class="row g-2 text-center" id="calc-outputs">
+                                                  <div class="col-6">
+                                                      <div class="bg-dark-card border border-dark-border p-2 rounded-2">
+                                                          <span class="text-muted text-xs d-block">Actual Commute</span>
+                                                          <span class="font-bold text-white text-sm" id="calc-res-time">-- mins</span>
+                                                      </div>
+                                                  </div>
+                                                  <div class="col-6">
+                                                      <div class="bg-dark-card border border-dark-border p-2 rounded-2">
+                                                          <span class="text-muted text-xs d-block">Time Wasted</span>
+                                                          <span class="font-bold text-danger text-sm" id="calc-res-delay">-- mins</span>
+                                                      </div>
+                                                  </div>
+                                                  <div class="col-6">
+                                                      <div class="bg-dark-card border border-dark-border p-2 rounded-2">
+                                                          <span class="text-muted text-xs d-block">Fuel Wasted</span>
+                                                          <span class="font-bold text-warning text-sm" id="calc-res-fuel">-- L</span>
+                                                      </div>
+                                                  </div>
+                                                  <div class="col-6">
+                                                      <div class="bg-dark-card border border-dark-border p-2 rounded-2">
+                                                          <span class="text-muted text-xs d-block">Financial Loss</span>
+                                                          <span class="font-bold text-success text-sm" id="calc-res-cost">₹--</span>
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      </div>
                                  </div>
                             </div>
                         </div>
@@ -637,21 +724,62 @@
                                             <hr class="border-dark-border my-2">
                                             <div class="mb-3 mt-2">
                                                 <span class="text-muted text-sm d-block">Coefficient of Determination</span>
-                                                <h4 class="font-semibold text-warning mb-0">{{ metrics[target]['R2'] if metrics else '0.00' }} <span class="unit-text text-sm">R²</span></h4>
+                                                <h4 class="font-semibold text-warning mb-0">{{ metrics['Random Forest'][target]['R2'] if metrics else '0.00' }} <span class="unit-text text-sm">R²</span></h4>
                                             </div>
                                             <div class="row g-2 text-xs">
                                                 <div class="col-6 border-end border-dark-border">
                                                     <span class="text-muted d-block">MAE</span>
-                                                    <span class="font-bold text-white">{{ metrics[target]['MAE'] if metrics else '0.0' }}</span>
+                                                    <span class="font-bold text-white">{{ metrics['Random Forest'][target]['MAE'] if metrics else '0.0' }}</span>
                                                 </div>
                                                 <div class="col-6">
                                                     <span class="text-muted d-block">RMSE</span>
-                                                    <span class="font-bold text-white">{{ metrics[target]['RMSE'] if metrics else '0.0' }}</span>
+                                                    <span class="font-bold text-white">{{ metrics['Random Forest'][target]['RMSE'] if metrics else '0.0' }}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     {% endfor %}
+                                </div>
+
+                                <!-- Side-by-Side Model Comparison Matrix -->
+                                <div class="mt-4 pt-2">
+                                    <h6 class="font-bold text-white mb-3"><i class="fa-solid fa-table me-2 text-warning"></i>Model Comparison Matrix (Validation Split)</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-dark table-striped table-bordered border-dark-border text-center text-xs align-middle">
+                                            <thead class="bg-dark-card">
+                                                <tr>
+                                                    <th>Target Variable</th>
+                                                    <th>Model Architecture</th>
+                                                    <th>R² Accuracy Score</th>
+                                                    <th>Mean Absolute Error (MAE)</th>
+                                                    <th>Root Mean Squared Error (RMSE)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% if metrics %}
+                                                    {% for target in ['Congestion Level', 'Average Speed', 'Travel Time Index', 'Road Capacity Utilization'] %}
+                                                        {% for model in ['Random Forest', 'Decision Tree', 'Linear Regression'] %}
+                                                        <tr>
+                                                            {% if loop.first %}
+                                                            <td rowspan="3" class="font-bold text-white text-sm bg-dark-card border-end border-dark-border">{{ target }}</td>
+                                                            {% endif %}
+                                                            <td class="font-semibold {% if model == 'Random Forest' %}text-warning{% endif %}">{{ model }}</td>
+                                                            <td class="font-bold text-warning">
+                                                                {{ metrics[model][target]['R2'] }}
+                                                            </td>
+                                                            <td>{{ metrics[model][target]['MAE'] }}</td>
+                                                            <td>{{ metrics[model][target]['RMSE'] }}</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <tr>
+                                                        <td colspan="5">No evaluation metrics available. Please train models first.</td>
+                                                    </tr>
+                                                {% endif %}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>

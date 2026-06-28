@@ -852,3 +852,34 @@ p, span, label, td, th, li {
         page-break-inside: avoid;
     }
 }
+
+/* Advanced Features Addition */
+/* Calculator Output Grid enhancements */
+#calc-outputs .bg-dark-card {
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+#calc-outputs .bg-dark-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 193, 7, 0.3) !important;
+}
+
+[data-theme="light"] #calc-outputs .bg-dark-card {
+    background: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme="light"] #calc-outputs span.text-white {
+    color: #111111 !important;
+}
+
+/* Route Finder Styles */
+#route-origin, #route-destination {
+    cursor: pointer;
+}
+
+/* Print Overrides */
+@media print {
+    #route-finder-card, #calculator-card {
+        page-break-inside: avoid;
+        margin-top: 15px !important;
+    }
+}

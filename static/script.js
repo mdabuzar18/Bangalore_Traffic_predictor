@@ -88,6 +88,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // 6. Hook up Commute & Fuel Calculator inputs for Real-Time Recalculation
+    const calcDuration = document.getElementById('calc-duration');
+    const calcVehicle = document.getElementById('calc-vehicle');
+    if (calcDuration) {
+        calcDuration.addEventListener('input', () => calculateFuelWaste());
+    }
+    if (calcVehicle) {
+        calcVehicle.addEventListener('change', () => calculateFuelWaste());
+    }
 });
 
 // Switch Dashboard Tabs
@@ -147,6 +157,19 @@ function initializeFormDropdowns() {
             simAreaB.add(optB);
         });
     }
+
+    // Populate Route Origin & Destination Dropdowns
+    const routeOrigin = document.getElementById('route-origin');
+    const routeDestination = document.getElementById('route-destination');
+    if (routeOrigin && routeDestination) {
+        routeOrigin.innerHTML = '<option value="" disabled selected>Select Origin Road</option>';
+        routeDestination.innerHTML = '<option value="" disabled selected>Select Destination Road</option>';
+        
+        Object.keys(ROAD_COORDINATES).sort().forEach(road => {
+            routeOrigin.add(new Option(road, road));
+            routeDestination.add(new Option(road, road));
+        });
+    }
 }
 
 // Update Road dropdown dynamically based on Area Selection
@@ -184,6 +207,7 @@ function handlePredictSubmit(e) {
     
     // Collect features
     const payload = {
+        model: document.getElementById('pred-model').value,
         date: document.getElementById('pred-date').value,
         area: document.getElementById('pred-area').value,
         road: document.getElementById('pred-road').value,
@@ -212,6 +236,7 @@ function handlePredictSubmit(e) {
             
             // Trigger Hourly Congestion Profile calculations
             initOrUpdateHourlyChart(
+                payload.model,
                 payload.volume,
                 payload.area,
                 payload.road,
@@ -316,6 +341,9 @@ function updatePredictionResults(preds) {
     if (coords) {
         initOrUpdateMap(coords[0], coords[1], statusText, alertColor, roadName);
     }
+
+    // 6. Update Commute & Fuel Waste Calculator
+    runCalculatorUpdate(tti);
 }
 
 // Run What-If Comparison Simulation
@@ -616,47 +644,54 @@ function initOverviewCharts() {
 function initPerformanceCharts() {
     if (!featureImportances) return;
     
-    // 1. Chart: Feature Importance for Congestion
-    const congImportance = featureImportances['Congestion Level'];
-    const congFeatures = Object.keys(congImportance).sort((a, b) => congImportance[b] - congImportance[a]);
-    const congImportanceValues = congFeatures.map(f => congImportance[f]);
+    // Fallback to Random Forest if featureImportances is nested under model names
+    const targetImportances = featureImportances['Random Forest'] || featureImportances;
     
-    charts.importanceCongestion = new Chart(document.getElementById('importanceCongestionChart'), {
-        type: 'bar',
-        data: {
-            labels: congFeatures,
-            datasets: [{
-                label: 'Driver Weight (%)',
-                data: congImportanceValues,
-                backgroundColor: 'rgba(244, 63, 94, 0.45)',
-                borderColor: 'rgba(244, 63, 94, 0.85)',
-                borderWidth: 1.5,
-                borderRadius: 5
-            }]
-        },
-        options: getChartOptions('Relative Weight (%)', 'Input Feature', true)
-    });
+    // 1. Chart: Feature Importance for Congestion
+    const congImportance = targetImportances['Congestion Level'];
+    if (congImportance) {
+        const congFeatures = Object.keys(congImportance).sort((a, b) => congImportance[b] - congImportance[a]);
+        const congImportanceValues = congFeatures.map(f => congImportance[f]);
+        
+        charts.importanceCongestion = new Chart(document.getElementById('importanceCongestionChart'), {
+            type: 'bar',
+            data: {
+                labels: congFeatures,
+                datasets: [{
+                    label: 'Driver Weight (%)',
+                    data: congImportanceValues,
+                    backgroundColor: 'rgba(244, 63, 94, 0.45)',
+                    borderColor: 'rgba(244, 63, 94, 0.85)',
+                    borderWidth: 1.5,
+                    borderRadius: 5
+                }]
+            },
+            options: getChartOptions('Relative Weight (%)', 'Input Feature', true)
+        });
+    }
     
     // 2. Chart: Feature Importance for Average Speed
-    const speedImportance = featureImportances['Average Speed'];
-    const speedFeatures = Object.keys(speedImportance).sort((a, b) => speedImportance[b] - speedImportance[a]);
-    const speedImportanceValues = speedFeatures.map(f => speedImportance[f]);
-    
-    charts.importanceSpeed = new Chart(document.getElementById('importanceSpeedChart'), {
-        type: 'bar',
-        data: {
-            labels: speedFeatures,
-            datasets: [{
-                label: 'Driver Weight (%)',
-                data: speedImportanceValues,
-                backgroundColor: 'rgba(16, 185, 129, 0.45)',
-                borderColor: 'rgba(16, 185, 129, 0.85)',
-                borderWidth: 1.5,
-                borderRadius: 5
-            }]
-        },
-        options: getChartOptions('Relative Weight (%)', 'Input Feature', true)
-    });
+    const speedImportance = targetImportances['Average Speed'];
+    if (speedImportance) {
+        const speedFeatures = Object.keys(speedImportance).sort((a, b) => speedImportance[b] - speedImportance[a]);
+        const speedImportanceValues = speedFeatures.map(f => speedImportance[f]);
+        
+        charts.importanceSpeed = new Chart(document.getElementById('importanceSpeedChart'), {
+            type: 'bar',
+            data: {
+                labels: speedFeatures,
+                datasets: [{
+                    label: 'Driver Weight (%)',
+                    data: speedImportanceValues,
+                    backgroundColor: 'rgba(16, 185, 129, 0.45)',
+                    borderColor: 'rgba(16, 185, 129, 0.85)',
+                    borderWidth: 1.5,
+                    borderRadius: 5
+                }]
+            },
+            options: getChartOptions('Relative Weight (%)', 'Input Feature', true)
+        });
+    }
 }
 
 // Chart.js Default Option Helper
@@ -867,9 +902,26 @@ function applyPreset(presetName) {
 }
 
 // Calculate hourly traffic predictions across the day (Batch Predictions)
-function initOrUpdateHourlyChart(volume, area, road, weather, roadwork, incidents, pedestrians) {
+function initOrUpdateHourlyChart(model, volume, area, road, weather, roadwork, incidents, pedestrians) {
     const hours = ['12 AM', '3 AM', '6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM'];
-    const multipliers = [0.15, 0.05, 0.30, 1.0, 0.65, 0.55, 1.15, 0.80];
+    
+    // Choose multipliers dynamically based on Area Zone (IT corridors vs retail hubs vs transit hubs)
+    let multipliers = [0.15, 0.05, 0.30, 1.0, 0.65, 0.55, 1.15, 0.80]; // default
+    
+    const itAreas = ['Whitefield', 'Electronic City'];
+    const retailAreas = ['Indiranagar', 'Koramangala', 'Jayanagar', 'M.G. Road'];
+    const transitAreas = ['Hebbal', 'Yeshwanthpur'];
+    
+    if (itAreas.includes(area)) {
+        // IT Commute Corridors: Spikes at 9 AM and 6 PM
+        multipliers = [0.10, 0.02, 0.40, 1.25, 0.70, 0.60, 1.30, 0.75];
+    } else if (retailAreas.includes(area)) {
+        // Retail/Entertainment: Spikes in the evening (6 PM - 9 PM)
+        multipliers = [0.20, 0.05, 0.25, 0.75, 0.85, 0.95, 1.10, 1.20];
+    } else if (transitAreas.includes(area)) {
+        // Highway/Transit points: Heavy traffic throughout the day
+        multipliers = [0.30, 0.10, 0.65, 1.10, 0.95, 1.00, 1.20, 0.85];
+    }
     
     const promises = multipliers.map(mult => {
         const hourlyVol = Math.round(volume * mult);
@@ -877,6 +929,7 @@ function initOrUpdateHourlyChart(volume, area, road, weather, roadwork, incident
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                model,
                 area,
                 road,
                 weather,
@@ -979,4 +1032,208 @@ function renderHourlyChart(labels, data) {
 // Print / Export PDF Analysis Report
 function exportPDFReport() {
     window.print();
+}
+
+// Global travel time index stored from last prediction
+let lastPredictedTTI = 1.0;
+let routePolyline = null;
+
+function runCalculatorUpdate(tti) {
+    if (tti) {
+        lastPredictedTTI = tti;
+    }
+    
+    const typicalDurationInput = document.getElementById('calc-duration');
+    const vehicleTypeSelect = document.getElementById('calc-vehicle');
+    
+    if (!typicalDurationInput || !vehicleTypeSelect) return;
+    
+    const typicalDuration = parseFloat(typicalDurationInput.value) || 30;
+    const vehicleType = vehicleTypeSelect.value;
+    
+    // 1. Calculate Actual Commute Time
+    const actualDuration = typicalDuration * lastPredictedTTI;
+    const delayMinutes = actualDuration - typicalDuration;
+    
+    // 2. Calculate Fuel Wasted (Liters)
+    let idleRatePerHour = 1.0;
+    let fuelPricePerLiter = 102.86; // Petrol price in Bangalore
+    
+    if (vehicleType === 'car_petrol') {
+        idleRatePerHour = 1.0;
+        fuelPricePerLiter = 102.86;
+    } else if (vehicleType === 'car_diesel') {
+        idleRatePerHour = 0.8;
+        fuelPricePerLiter = 88.94;
+    } else if (vehicleType === 'bike_petrol') {
+        idleRatePerHour = 0.3;
+        fuelPricePerLiter = 102.86;
+    }
+    
+    const delayHours = Math.max(0, delayMinutes) / 60.0;
+    const fuelWasted = delayHours * idleRatePerHour;
+    const financialLoss = fuelWasted * fuelPricePerLiter;
+    
+    // 3. Update UI
+    document.getElementById('calc-res-time').innerText = `${Math.round(actualDuration)} mins`;
+    document.getElementById('calc-res-delay').innerText = `${Math.round(delayMinutes)} mins`;
+    document.getElementById('calc-res-fuel').innerText = `${fuelWasted.toFixed(2)} L`;
+    document.getElementById('calc-res-cost').innerText = `₹${Math.round(financialLoss)}`;
+}
+
+// Wrapper for manual trigger
+function calculateFuelWaste() {
+    runCalculatorUpdate(lastPredictedTTI);
+}
+
+// Route Congestion polyline overlay optimizer
+function calculateRouteCongestion() {
+    const origin = document.getElementById('route-origin').value;
+    const dest = document.getElementById('route-destination').value;
+    
+    if (!origin || !dest) {
+        alert("Please select both Origin and Destination intersections.");
+        return;
+    }
+    
+    if (origin === dest) {
+        alert("Origin and Destination must be different roads.");
+        return;
+    }
+    
+    const btn = document.getElementById('btn-draw-route');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-2"></i>Analyzing Path...';
+    
+    const model = document.getElementById('pred-model').value;
+    const dateVal = document.getElementById('pred-date').value;
+    const weatherVal = document.getElementById('pred-weather').value;
+    const roadworkVal = document.getElementById('pred-roadwork').checked ? 'Yes' : 'No';
+    const volumeVal = parseInt(document.getElementById('pred-volume').value);
+    const incidentsVal = parseInt(document.getElementById('pred-incidents').value);
+    const pedestriansVal = parseInt(document.getElementById('pred-pedestrians').value);
+    
+    // Find areas corresponding to origin and destination roads
+    let originArea = "";
+    let destArea = "";
+    
+    for (const [area, roads] of Object.entries(dataSummary.metadata.area_road_map)) {
+        if (roads.includes(origin)) originArea = area;
+        if (roads.includes(dest)) destArea = area;
+    }
+    
+    const payloadOrigin = {
+        model, date: dateVal, area: originArea, road: origin,
+        weather: weatherVal, roadwork: roadworkVal, volume: volumeVal,
+        incidents: incidentsVal, pedestrians: pedestriansVal
+    };
+    const payloadDest = {
+        model, date: dateVal, area: destArea, road: dest,
+        weather: weatherVal, roadwork: roadworkVal, volume: volumeVal,
+        incidents: incidentsVal, pedestrians: pedestriansVal
+    };
+    
+    Promise.all([
+        fetch('/api/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadOrigin)
+        }).then(r => r.json()),
+        fetch('/api/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadDest)
+        }).then(r => r.json())
+    ])
+    .then(([resOrigin, resDest]) => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-route me-1"></i>Draw Congestion Route Overlay';
+        
+        if (!resOrigin.success || !resDest.success) {
+            alert("Failed to compute routing congestion. Please try again.");
+            return;
+        }
+        
+        const congOrigin = resOrigin.predictions['Congestion Level'];
+        const congDest = resDest.predictions['Congestion Level'];
+        const speedOrigin = resOrigin.predictions['Average Speed'];
+        const speedDest = resDest.predictions['Average Speed'];
+        
+        const avgCong = (congOrigin + congDest) / 2;
+        const avgSpeed = (speedOrigin + speedDest) / 2;
+        
+        let routeColor = "var(--neon-green)";
+        let routeStatus = "Optimal Flow";
+        if (avgCong >= 75) {
+            routeColor = "var(--neon-red)";
+            routeStatus = "Severe Congestion";
+        } else if (avgCong >= 40) {
+            routeColor = "var(--neon-amber)";
+            routeStatus = "Moderate Choke";
+        }
+        
+        const startCoords = ROAD_COORDINATES[origin];
+        const endCoords = ROAD_COORDINATES[dest];
+        
+        if (!startCoords || !endCoords) {
+            alert("Coordinates for routing are missing.");
+            return;
+        }
+        
+        if (routePolyline) {
+            mapInstance.removeLayer(routePolyline);
+        }
+        if (mapMarker) {
+            mapMarker.closePopup();
+        }
+        
+        // Bezier curve coordinate generation
+        const pathCoords = [];
+        const steps = 100;
+        const midLat = (startCoords[0] + endCoords[0]) / 2;
+        const midLng = (startCoords[1] + endCoords[1]) / 2;
+        const offsetLat = (endCoords[1] - startCoords[1]) * 0.15;
+        const offsetLng = (startCoords[0] - endCoords[0]) * 0.15;
+        const controlLat = midLat + offsetLat;
+        const controlLng = midLng + offsetLng;
+        
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const lat = (1-t)*(1-t)*startCoords[0] + 2*(1-t)*t*controlLat + t*t*endCoords[0];
+            const lng = (1-t)*(1-t)*startCoords[1] + 2*(1-t)*t*controlLng + t*t*endCoords[1];
+            pathCoords.push([lat, lng]);
+        }
+        
+        routePolyline = L.polyline(pathCoords, {
+            color: routeColor,
+            weight: 6,
+            opacity: 0.85,
+            dashArray: "1, 8",
+            lineCap: "round"
+        }).addTo(mapInstance);
+        
+        mapInstance.fitBounds(routePolyline.getBounds(), { padding: [30, 30] });
+        
+        const popupLat = pathCoords[Math.floor(steps / 2)][0];
+        const popupLng = pathCoords[Math.floor(steps / 2)][1];
+        
+        L.popup()
+            .setLatLng([popupLat, popupLng])
+            .setContent(`
+                <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; line-height: 1.4;">
+                    <b style="font-size: 13px; color: var(--text-primary);"><i class="fa-solid fa-route me-1 text-warning"></i> Route Simulation</b><br>
+                    <span style="color: var(--text-secondary); font-size: 11px;">${origin} ➔ ${dest}</span><br>
+                    <span style="color: var(--text-secondary);">Avg Congestion:</span> <span style="color: ${routeColor}; font-weight: 700;">${avgCong.toFixed(0)}%</span><br>
+                    <span style="color: var(--text-secondary);">Avg Speed:</span> <span style="color: var(--text-primary); font-weight: 700;">${avgSpeed.toFixed(1)} km/h</span><br>
+                    <span style="color: var(--text-secondary);">Status:</span> <span style="color: ${routeColor}; font-weight: 700;">${routeStatus}</span>
+                </div>
+            `)
+            .openOn(mapInstance);
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-route me-1"></i>Draw Congestion Route Overlay';
+        console.error("Route calculation error:", err);
+        alert("An error occurred routing predictions.");
+    });
 }
